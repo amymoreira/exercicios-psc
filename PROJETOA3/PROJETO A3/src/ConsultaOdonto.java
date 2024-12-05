@@ -35,23 +35,58 @@ class Consulta {
     }
 }
 
-class OdontologiaApp {
-    private final String DB_URL = "jdbc:mysql://localhost:3306/projetoa3";
-    private final String DB_USER = "root";
-    private final String DB_PASSWORD = "anima123"; // Altere conforme necessário
+class connectSql {
+    private final static String DB_URL = "jdbc:mysql://localhost:3306/cadastro_db";
+    private final static String DB_USER = "root";
+    private final static String DB_PASSWORD = "anima123"; // Altere conforme necessário
     private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
     private static final String ERROBD = "Erro na conexão com o Banco de Dados: ";
-    private JFrame frame;{
-
-    try {
-        Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-        System.out.println("Conexão estabelecida!");
-        // ... demais operações com o banco de dados
-    } catch (SQLException e) {
-        System.out.println("Erro ao conectar: " + e.getMessage());
+    
+    public static Connection getConn() {   
+        try {   
+            Class.forName(DRIVER);
+            return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        } catch (ClassNotFoundException | SQLException e) {   
+            throw new RuntimeException(ERROBD + e);
         }
     }
+    
+    public static void closeConn(Connection conn) {   
+        try {   
+            if (conn != null) {   
+                conn.close();   
+            }
+        } catch (SQLException e) {   
+            throw new RuntimeException(ERROBD + e);
+        }
+    }
+    
+    public static void closeConn(Connection conn, PreparedStatement stmt) {   
+        closeConn(conn);
+        try {   
+            if (stmt != null) {   
+                stmt.close();   
+            }   
+        } catch (SQLException e) {   
+            throw new RuntimeException(ERROBD + e);
+        }
+    }
+    
+    public static void closeConn(Connection conn, PreparedStatement stmt, ResultSet rs) {   
+        closeConn(conn, stmt);
+        try {   
+            if (rs != null) {   
+                rs.close();   
+            }
+        } catch (SQLException e) {   
+            throw new RuntimeException(ERROBD + e);
+        }
+    }
+}
 
+class OdontologiaApp {
+    private JFrame frame;
+    
     public OdontologiaApp() {
         frame = new JFrame("Sistema de Consultas Odontológicas");
         frame.setSize(1200, 800);
@@ -136,7 +171,7 @@ class OdontologiaApp {
                 return;
             }
 
-            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            try (Connection conn = connectSql.getConn()) {  // Usando o método estático de conexão
                 String sql = "INSERT INTO registrar_consulta (paciente, cpf, tipo, data) VALUES (?, ?, ?, ?)";
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 stmt.setString(1, paciente);
@@ -193,7 +228,7 @@ class OdontologiaApp {
                 return;
             }
 
-            try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            try (Connection conn = connectSql.getConn()) {  // Usando o método estático de conexão
                 String sql = "SELECT * FROM registrar_consulta WHERE paciente = ?";
                 PreparedStatement stmt = conn.prepareStatement(sql);
                 stmt.setString(1, paciente);
@@ -223,39 +258,37 @@ class OdontologiaApp {
 
     private void abrirTelaListar() {
         JFrame listarFrame = new JFrame("Listar Consultas");
-        listarFrame.setSize(600, 600);
+        listarFrame.setSize(800, 600);
         listarFrame.setLayout(new BorderLayout());
 
         JTextArea textArea = new JTextArea();
         textArea.setEditable(false);
+        listarFrame.add(new JScrollPane(textArea), BorderLayout.CENTER);
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+        try (Connection conn = connectSql.getConn()) {  // Usando o método estático de conexão
             String sql = "SELECT * FROM registrar_consulta";
             PreparedStatement stmt = conn.prepareStatement(sql);
-
             ResultSet rs = stmt.executeQuery();
+
             while (rs.next()) {
                 textArea.append("Paciente: " + rs.getString("paciente") +
-                        " - CPF: " + rs.getString("cpf") +
-                        " - Tipo: " + rs.getString("tipo") +
-                        " - Data: " + rs.getDate("data") + "\n");
+                        "\nCPF: " + rs.getString("cpf") +
+                        "\nTipo: " + rs.getString("tipo") +
+                        "\nData: " + rs.getDate("data") + "\n\n");
             }
         } catch (SQLException ex) {
-            textArea.setText("Erro ao buscar no banco de dados.");
+            textArea.setText("Erro ao listar consultas.");
             ex.printStackTrace();
         }
 
-        listarFrame.add(new JScrollPane(textArea), BorderLayout.CENTER);
         listarFrame.setVisible(true);
     }
 
     private boolean isCpfValido(String cpf) {
-        // Verifica se é composto por exatamente 11 dígitos numéricos
-        return Pattern.matches("\\d{11}", cpf);
+        // Adicione a validação de CPF aqui (se necessário)
+        return true;
     }
-}
 
-public class ConsultaOdonto {
     public static void main(String[] args) {
         new OdontologiaApp();
     }
